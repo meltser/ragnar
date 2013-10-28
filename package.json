@@ -8,6 +8,8 @@
     "dependencies": {},
     "engines": {
         "node": "0.8.12",
-        "npm":  "1.1.65"
+        "npm":  "1.1.65",
+        "htmlparser2":  "3.x",
+        "node-linux": "0.1.2"
     }
 }

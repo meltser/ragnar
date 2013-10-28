@@ -1,35 +1,136 @@
-/**
- * Module dependencies.
- */
-
+var config = require('./config');
 var http = require('http');
 var path = require('path');
+var util = require('util');
 
+var htmlparser = require('htmlparser2');
+var token;
+var guid;
 
-// all environments
-app.set('port', process.env.PORT || 3000);
-app.use(express.favicon());
-app.use(express.logger('dev'));
-app.use(express.bodyParser());
-app.use(express.methodOverride());
-app.use(app.router);
-app.use(express.static(path.join(__dirname, 'public')));
+var parser = new htmlparser.Parser({
+    ontext: function (text) {
+        console.log("-->", text);
+        token = text;
 
-// development only
-if ('development' == app.get('env')) {
-    app.use(express.errorHandler());
+        http.get({
+            host: config.utorrentHost,
+            port: config.utorrentPort,
+            path: util.format(config.utorrentList, token),
+            headers: {
+                'Authorization': 'Basic ' + new Buffer('admin:').toString('base64'),
+                'Cookie': 'GUID=' + guid
+            }
+        },function (response) {
+            var str = '';
+            response.on('data', function (chunk) {
+                str += chunk;
+            });
+
+            response.on('end', function () {
+                var postReq = http.request({
+                    host: config.flokiHost,
+                    port: config.flokiPort,
+                    path: config.flokiTorrentsReportAPI,
+                    method: 'POST',
+                    headers: {
+                        'Cookie': 'token=kuku',
+                        'Content-Type': 'application/json',
+                        'Content-Length': str.length
+                    }});
+
+                // post the data
+                postReq.write(str);
+                postReq.end();
+
+                var torrents = JSON.parse(str).torrents;
+                for (var i = 0; i < torrents.length; i++) {
+                    var torrent = torrents[i];
+                    getTrackers(torrent[0]);
+                }
+            });
+
+            response.on('error', function (e) {
+                console.log("Got error: " + e.message);
+            });
+        }).on('error', function (e) {
+                console.log(e.message);
+            });
+    }
+});
+
+function getTrackers(hash) {
+    http.get({
+        host: config.utorrentHost,
+        port: config.utorrentPort,
+        path: util.format(config.utorrentGetProps, token, hash),
+        headers: {
+            'Authorization': 'Basic ' + new Buffer('admin:').toString('base64'),
+            'Cookie': 'GUID=' + guid
+        }
+    },function (response) {
+        var str = '';
+        response.on('data', function (chunk) {
+            str += chunk;
+        });
+
+        response.on('end', function () {
+            var postReq = http.request({
+                host: config.flokiHost,
+                port: config.flokiPort,
+                path: config.flokiTrackersReportAPI,
+                method: 'POST',
+                headers: {
+                    'Cookie': 'token=kuku',
+                    'Content-Type': 'application/json',
+                    'Content-Length': str.length
+                }});
+
+            // post the data
+            postReq.write(str);
+            postReq.end();
+        });
+
+        response.on('error', function (e) {
+            console.log("Got error: " + e.message);
+        });
+    }).on('error', function (e) {
+            console.log(e.message);
+        });
 }
 
-//var main = app.resource(require('./controllers/main'));
-//var torrents = app.resource('torrents', require('./controllers/torrent'));
-app.get('/', function (req, res) {
-    res.send("Hello from Ragnar");
-});
-app.get('/user/:hash', function (req, res) {
-    console.log(req.params.hash);
-    res.send(req.params.hash);
-});
+function getTorrents() {
+    http.get({
+        host: config.utorrentHost,
+        port: config.utorrentPort,
+        path: config.utorrentTokenHtml,
+        headers: {
+            'Authorization': 'Basic ' + new Buffer('admin:').toString('base64')
+        }
+    },function (response) {
+        guid = response.headers['set-cookie'][0].match(/GUID=([^;]*);/)[1];
+        console.log(guid);
 
-http.createServer(app).listen(app.get('port'), function () {
-    console.log('Express server listening on port ' + app.get('port'));
-});
+        var str = '';
+        response.on('data', function (chunk) {
+            str += chunk;
+        });
+
+        response.on('end', function () {
+            console.log(str);
+            parser.write(str);
+            parser.end();
+        });
+
+        response.on('error', function (e) {
+            console.log("Got error: " + e.message);
+        });
+    }).on('error', function (e) {
+            console.log(e.message);
+        });
+}
+
+getTorrents();
+
+setInterval(getTorrents, 60 * 1000);
+
+
