@@ -33,7 +33,7 @@ var parser = new htmlparser.Parser({
                     path: config.flokiTorrentsReportAPI,
                     method: 'POST',
                     headers: {
-                        'Cookie': 'token=kuku',
+                        'Cookie': 'token=' + config.flokiUserToken,
                         'Content-Type': 'application/json',
                         'Content-Length': str.length
                     }});
@@ -80,7 +80,7 @@ function getTrackers(hash) {
                 path: config.flokiTrackersReportAPI,
                 method: 'POST',
                 headers: {
-                    'Cookie': 'token=kuku',
+                    'Cookie': 'token=' + config.flokiUserToken,
                     'Content-Type': 'application/json',
                     'Content-Length': str.length
                 }});

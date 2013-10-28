@@ -8,6 +8,7 @@ module.exports = {
     flokiHost: "floki.herokuapp.com",
 //    flokiPort: 8081,
     flokiPort: 80,
+    flokiUserToken: "kuku",
     flokiTorrentsReportAPI: "/torrents",
     flokiTrackersReportAPI: "/trackers"
 };
